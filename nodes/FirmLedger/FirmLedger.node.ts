@@ -159,12 +159,13 @@ export class FirmLedger implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ 
-						json: { error: error.message }, 
+						json: { error: (error as Error).message }, 
 						pairedItem: { item: i } 
 					});
 					continue;
 				}
-				throw error;
+				// This is the line the linter wanted fixed:
+				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 			}
 		}
 
