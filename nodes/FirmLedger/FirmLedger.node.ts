@@ -152,10 +152,16 @@ export class FirmLedger implements INodeType {
 				}
 
 				const result = response?.result ?? response;
-				returnData.push({ json: result as JsonObject, pairedItem: { item: i } });
+				returnData.push({ 
+					json: result as JsonObject, 
+					pairedItem: { item: i } 
+				});
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
+					returnData.push({ 
+						json: { error: error.message }, 
+						pairedItem: { item: i } 
+					});
 					continue;
 				}
 				throw error;
