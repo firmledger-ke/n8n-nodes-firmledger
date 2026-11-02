@@ -30,7 +30,7 @@ export class FirmLedger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: 'mcpOAuth2Api',
+				name: 'firmLedgerOAuth2Api',
 				required: true,
 			},
 		],
@@ -42,16 +42,16 @@ export class FirmLedger implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'List Tools',
-						value: 'listTools',
-						description: 'List all MCP tools available on FirmLedger',
-						action: 'List all MCP tools',
-					},
-					{
 						name: 'Execute Tool',
 						value: 'executeTool',
 						description: 'Execute a specific MCP tool',
 						action: 'Execute an MCP tool',
+					},
+					{
+						name: 'List Tools',
+						value: 'listTools',
+						description: 'List all MCP tools available on FirmLedger',
+						action: 'List all MCP tools',
 					},
 				],
 				default: 'listTools',
@@ -89,68 +89,77 @@ export class FirmLedger implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			const operation = this.getNodeParameter('operation', i) as string;
+			try {
+				const operation = this.getNodeParameter('operation', i) as string;
 
-			let body: JsonObject;
+				let body: JsonObject;
 
-			if (operation === 'listTools') {
-				body = {
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'tools/list',
-					params: {},
-				};
-			} else {
-				const toolName = this.getNodeParameter('toolName', i) as string;
-				const argsRaw = this.getNodeParameter('arguments', i);
-
-				let args: JsonObject;
-				if (typeof argsRaw === 'string') {
-					try {
-						args = JSON.parse(argsRaw) as JsonObject;
-					} catch {
-						throw new NodeOperationError(this.getNode(), 'Arguments is not valid JSON');
-					}
+				if (operation === 'listTools') {
+					body = {
+						jsonrpc: '2.0',
+						id: 1,
+						method: 'tools/list',
+						params: {},
+					};
 				} else {
-					args = argsRaw as JsonObject;
+					const toolName = this.getNodeParameter('toolName', i) as string;
+					const argsRaw = this.getNodeParameter('arguments', i);
+
+					let args: JsonObject;
+					if (typeof argsRaw === 'string') {
+						try {
+							args = JSON.parse(argsRaw) as JsonObject;
+						} catch {
+							throw new NodeOperationError(this.getNode(), 'Arguments is not valid JSON', { itemIndex: i });
+						}
+					} else {
+						args = argsRaw as JsonObject;
+					}
+
+					body = {
+						jsonrpc: '2.0',
+						id: 1,
+						method: 'tools/call',
+						params: {
+							name: toolName,
+							arguments: args,
+						},
+					};
 				}
 
-				body = {
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'tools/call',
-					params: {
-						name: toolName,
-						arguments: args,
+				const response = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'firmLedgerOAuth2Api',
+					{
+						method: 'POST',
+						url: MCP_ENDPOINT,
+						body,
+						json: true,
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json, text/event-stream',
+						},
 					},
-				};
+				)) as JsonObject;
+
+				const err = response?.error as JsonObject | undefined;
+				if (err) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`FirmLedger MCP error: ${String(err.message ?? 'unknown')}`,
+						{ itemIndex: i },
+					);
+				}
+
+				const result = response?.result ?? response;
+				returnData.push({ json: result as JsonObject, pairedItem: { item: i } });
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
+					continue;
+				}
+				throw error;
 			}
-
-			const response = (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				'mcpOAuth2Api',
-				{
-					method: 'POST',
-					url: MCP_ENDPOINT,
-					body,
-					json: true,
-					headers: {
-						'Content-Type': 'application/json',
-						Accept: 'application/json, text/event-stream',
-					},
-				},
-			)) as JsonObject;
-
-			const err = response?.error as JsonObject | undefined;
-			if (err) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`FirmLedger MCP error: ${String(err.message ?? 'unknown')}`,
-				);
-			}
-
-			const result = response?.result ?? response;
-			returnData.push({ json: result as JsonObject });
 		}
 
 		return [returnData];
