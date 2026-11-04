@@ -7,7 +7,6 @@ import {
 	NodeConnectionTypes,
 	JsonObject,
 } from 'n8n-workflow';
-import { parse } from 'csv-parse/sync';
 
 export class FirmLedger implements INodeType {
 	description: INodeTypeDescription = {
@@ -418,12 +417,58 @@ export class FirmLedger implements INodeType {
 						headers: { Accept: 'text/csv' },
 					}) as string;
 
-					try {
-						const records = parse(csv, { columns: true, skip_empty_lines: true, relax_column_count: true });
-						for (const record of records) {
-							returnData.push({ json: record as JsonObject, pairedItem: { item: i } });
+					// Custom CSV parser (no external dependencies)
+					const parseCSV = (text: string) => {
+						const rows = [];
+						let currentRow = [];
+						let currentCell = '';
+						let inQuotes = false;
+
+						for (let charIdx = 0; charIdx < text.length; charIdx++) {
+							const char = text[charIdx];
+							const nextChar = text[charIdx + 1];
+
+							if (char === '"') {
+								if (inQuotes && nextChar === '"') {
+									currentCell += '"';
+									charIdx++; 
+								} else {
+									inQuotes = !inQuotes;
+								}
+							} else if (char === ',' && !inQuotes) {
+								currentRow.push(currentCell);
+								currentCell = '';
+							} else if ((char === '\n' || char === '\r') && !inQuotes) {
+								if (currentCell !== '' || currentRow.length > 0) {
+									currentRow.push(currentCell);
+									rows.push(currentRow);
+									currentRow = [];
+									currentCell = '';
+								}
+								if (char === '\r' && nextChar === '\n') charIdx++; 
+							} else {
+								currentCell += char;
+							}
 						}
-					} catch (parseError) {
+						if (currentCell !== '' || currentRow.length > 0) {
+							currentRow.push(currentCell);
+							rows.push(currentRow);
+						}
+						return rows;
+					};
+
+					const parsedRows = parseCSV(csv);
+					if (parsedRows.length > 1) {
+						const headers = parsedRows[0].map(h => h.trim());
+						for (let j = 1; j < parsedRows.length; j++) {
+							const row = parsedRows[j];
+							const item: JsonObject = {};
+							headers.forEach((header, index) => {
+								item[header] = row[index] ? row[index].trim() : '';
+							});
+							returnData.push({ json: item, pairedItem: { item: i } });
+						}
+					} else {
 						returnData.push({ json: { csv: csv }, pairedItem: { item: i } });
 					}
 					continue;
