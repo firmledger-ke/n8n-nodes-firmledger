@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-firmledger",
-	"version": "0.1.6",
+	"version": "0.1.9",
 	"description": "Search and verify businesses on FirmLedger from n8n workflows.",
 	"license": "MIT",
 	"homepage": "https://firmledger.co.ke",
@@ -16,7 +16,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/firmledger-ke/n8n-nodes-firmledger.git"
+		"url": "git+https://github.com/firmledger-ke/n8n-nodes-firmledger.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -24,17 +24,17 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
-		"release": "n8n-node release",
-		"prepublishOnly": "n8n-node prerelease"
+		"release": "n8n-node release"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"icons"
 	],
 	"n8n": {
 		"n8nNodesApiVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/FirmLedgerOAuth2Api.credentials.js"
+			"dist/credentials/FirmLedgerApi.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/FirmLedger/FirmLedger.node.js"
@@ -46,6 +46,9 @@
 		"prettier": "3.8.3",
 		"release-it": "20.2.0",
 		"typescript": "5.9.3"
+	},
+	"dependencies": {
+		"csv-parse": "^5.5.5"
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*"
