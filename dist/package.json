@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-firmledger",
-    "version": "0.1.9",
+    "version": "0.1.10",
     "description": "Search and verify businesses on FirmLedger from n8n workflows.",
     "license": "MIT",
     "homepage": "https://firmledger.co.ke",
