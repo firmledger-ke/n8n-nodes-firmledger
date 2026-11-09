@@ -219,36 +219,18 @@ class FirmLedger {
                     required: true,
                 },
                 {
-                    displayName: 'Tagline',
-                    name: 'tagline',
-                    type: 'string',
+                    displayName: 'Additional Fields',
+                    name: 'listingAdditionalFields',
+                    type: 'collection',
+                    placeholder: 'Add Field',
                     displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-                    default: '',
-                    required: true,
-                },
-                {
-                    displayName: 'Description',
-                    name: 'description',
-                    type: 'string',
-                    displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-                    default: '',
-                    required: true,
-                },
-                {
-                    displayName: 'Website',
-                    name: 'website',
-                    type: 'string',
-                    displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-                    default: '',
-                    required: true,
-                },
-                {
-                    displayName: 'Country',
-                    name: 'country',
-                    type: 'string',
-                    displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-                    default: '',
-                    required: true,
+                    default: {},
+                    options: [
+                        { displayName: 'Tagline', name: 'tagline', type: 'string', default: '' },
+                        { displayName: 'Description', name: 'description', type: 'string', default: '' },
+                        { displayName: 'Website', name: 'website', type: 'string', default: '' },
+                        { displayName: 'Country', name: 'country', type: 'string', default: '' },
+                    ],
                 },
                 {
                     displayName: 'Update Fields',
@@ -335,13 +317,6 @@ class FirmLedger {
                     ],
                 },
                 {
-                    displayName: 'Label',
-                    name: 'webhookLabel',
-                    type: 'string',
-                    displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
-                    default: '',
-                },
-                {
                     displayName: 'URL',
                     name: 'webhookUrl',
                     type: 'string',
@@ -359,17 +334,22 @@ class FirmLedger {
                     description: 'Comma-separated events (e.g., listing.approved, listing.updated)',
                 },
                 {
-                    displayName: 'Categories',
-                    name: 'webhookCategories',
-                    type: 'string',
+                    displayName: 'Additional Fields',
+                    name: 'webhookAdditionalFields',
+                    type: 'collection',
+                    placeholder: 'Add Field',
                     displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
-                    default: '',
-                    description: 'Comma-separated categories (optional)',
+                    default: {},
+                    options: [
+                        { displayName: 'Label', name: 'label', type: 'string', default: '' },
+                        { displayName: 'Categories', name: 'categories', type: 'string', default: '', description: 'Comma-separated categories' },
+                    ],
                 },
             ],
         };
     }
     async execute() {
+        var _a;
         const items = this.getInputData();
         const returnData = [];
         const resource = this.getNodeParameter('resource', 0);
@@ -571,13 +551,19 @@ class FirmLedger {
                 }
                 else if (resource === 'myListing' && operation === 'create') {
                     const name = this.getNodeParameter('name', i);
-                    const tagline = this.getNodeParameter('tagline', i);
-                    const description = this.getNodeParameter('description', i);
-                    const website = this.getNodeParameter('website', i);
-                    const country = this.getNodeParameter('country', i);
+                    const additionalFields = this.getNodeParameter('listingAdditionalFields', i, {});
+                    const body = { name };
+                    if (additionalFields.tagline)
+                        body.tagline = additionalFields.tagline;
+                    if (additionalFields.description)
+                        body.description = additionalFields.description;
+                    if (additionalFields.website)
+                        body.website = additionalFields.website;
+                    if (additionalFields.country)
+                        body.country = additionalFields.country;
                     responseData = await this.helpers.httpRequestWithAuthentication.call(this, 'firmLedgerApi', {
                         method: 'POST', url: `${baseURL}/my/listings`, json: true,
-                        body: { name, tagline, description, website, country },
+                        body,
                     });
                 }
                 else if (resource === 'myListing' && operation === 'update') {
@@ -620,15 +606,22 @@ class FirmLedger {
                     });
                 }
                 else if (resource === 'webhook' && operation === 'create') {
-                    const label = this.getNodeParameter('webhookLabel', i);
                     const url = this.getNodeParameter('webhookUrl', i);
                     const eventsRaw = this.getNodeParameter('webhookEvents', i);
-                    const categoriesRaw = this.getNodeParameter('webhookCategories', i);
+                    const additionalFields = this.getNodeParameter('webhookAdditionalFields', i, {});
                     const events = eventsRaw ? eventsRaw.split(',').map((e) => e.trim()) : [];
-                    const categories = categoriesRaw ? categoriesRaw.split(',').map((c) => c.trim()) : [];
+                    const categoriesRaw = (_a = additionalFields.categories) !== null && _a !== void 0 ? _a : '';
+                    const categories = categoriesRaw
+                        ? categoriesRaw.split(',').map((c) => c.trim()).filter((c) => c !== '')
+                        : [];
+                    const body = { url, events };
+                    if (additionalFields.label)
+                        body.label = additionalFields.label;
+                    if (categories.length)
+                        body.categories = categories;
                     responseData = await this.helpers.httpRequestWithAuthentication.call(this, 'firmLedgerApi', {
                         method: 'POST', url: `${baseURL}/webhooks`, json: true,
-                        body: { label, url, events, categories },
+                        body,
                     });
                 }
                 else if (resource === 'webhook' && operation === 'update') {

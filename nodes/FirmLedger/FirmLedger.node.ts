@@ -224,36 +224,18 @@ export class FirmLedger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Tagline',
-				name: 'tagline',
-				type: 'string',
+				displayName: 'Additional Fields',
+				name: 'listingAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-				default: '',
-				required: true,
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-				default: '',
-				required: true,
-			},
-			{
-				displayName: 'Website',
-				name: 'website',
-				type: 'string',
-				displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-				default: '',
-				required: true,
-			},
-			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				displayOptions: { show: { resource: ['myListing'], operation: ['create'] } },
-				default: '',
-				required: true,
+				default: {},
+				options: [
+					{ displayName: 'Tagline', name: 'tagline', type: 'string', default: '' },
+					{ displayName: 'Description', name: 'description', type: 'string', default: '' },
+					{ displayName: 'Website', name: 'website', type: 'string', default: '' },
+					{ displayName: 'Country', name: 'country', type: 'string', default: '' },
+				],
 			},
 			{
 				displayName: 'Update Fields',
@@ -340,13 +322,6 @@ export class FirmLedger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Label',
-				name: 'webhookLabel',
-				type: 'string',
-				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
-				default: '',
-			},
-			{
 				displayName: 'URL',
 				name: 'webhookUrl',
 				type: 'string',
@@ -364,12 +339,16 @@ export class FirmLedger implements INodeType {
 				description: 'Comma-separated events (e.g., listing.approved, listing.updated)',
 			},
 			{
-				displayName: 'Categories',
-				name: 'webhookCategories',
-				type: 'string',
+				displayName: 'Additional Fields',
+				name: 'webhookAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
-				default: '',
-				description: 'Comma-separated categories (optional)',
+				default: {},
+				options: [
+					{ displayName: 'Label', name: 'label', type: 'string', default: '' },
+					{ displayName: 'Categories', name: 'categories', type: 'string', default: '', description: 'Comma-separated categories' },
+				],
 			},
 		],
 	};
@@ -549,13 +528,15 @@ export class FirmLedger implements INodeType {
 				}
 				else if (resource === 'myListing' && operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
-					const tagline = this.getNodeParameter('tagline', i) as string;
-					const description = this.getNodeParameter('description', i) as string;
-					const website = this.getNodeParameter('website', i) as string;
-					const country = this.getNodeParameter('country', i) as string;
+					const additionalFields = this.getNodeParameter('listingAdditionalFields', i, {}) as JsonObject;
+					const body: Record<string, unknown> = { name };
+					if (additionalFields.tagline) body.tagline = additionalFields.tagline;
+					if (additionalFields.description) body.description = additionalFields.description;
+					if (additionalFields.website) body.website = additionalFields.website;
+					if (additionalFields.country) body.country = additionalFields.country;
 					responseData = await this.helpers.httpRequestWithAuthentication.call(this, 'firmLedgerApi', {
 						method: 'POST', url: `${baseURL}/my/listings`, json: true,
-						body: { name, tagline, description, website, country },
+						body,
 					}) as JsonObject;
 				}
 				else if (resource === 'myListing' && operation === 'update') {
@@ -595,16 +576,22 @@ export class FirmLedger implements INodeType {
 					}) as JsonObject;
 				}
 				else if (resource === 'webhook' && operation === 'create') {
-					const label = this.getNodeParameter('webhookLabel', i) as string;
 					const url = this.getNodeParameter('webhookUrl', i) as string;
 					const eventsRaw = this.getNodeParameter('webhookEvents', i) as string;
-					const categoriesRaw = this.getNodeParameter('webhookCategories', i) as string;
+					const additionalFields = this.getNodeParameter('webhookAdditionalFields', i, {}) as JsonObject;
 					const events = eventsRaw ? eventsRaw.split(',').map((e: string) => e.trim()) : [];
-					const categories = categoriesRaw ? categoriesRaw.split(',').map((c: string) => c.trim()) : [];
+					const categoriesRaw = (additionalFields.categories as string) ?? '';
+					const categories = categoriesRaw
+						? categoriesRaw.split(',').map((c: string) => c.trim()).filter((c: string) => c !== '')
+						: [];
+
+					const body: Record<string, unknown> = { url, events };
+					if (additionalFields.label) body.label = additionalFields.label;
+					if (categories.length) body.categories = categories;
 
 					responseData = await this.helpers.httpRequestWithAuthentication.call(this, 'firmLedgerApi', {
 						method: 'POST', url: `${baseURL}/webhooks`, json: true,
-						body: { label, url, events, categories },
+						body,
 					}) as JsonObject;
 				}
 				else if (resource === 'webhook' && operation === 'update') {

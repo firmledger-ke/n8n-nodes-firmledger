@@ -79,6 +79,32 @@ Here is a simple workflow to find verified fintech companies in Kenya.
 ]
 ```
 
+## Optional Fields
+
+Optional parameters are grouped under **Additional Fields** (or **Update Fields** / **Filters**) in the node UI. Leave them collapsed and only the API-required fields are sent.
+
+| Resource & Operation | Top-level (required) fields | Optional fields |
+| --- | --- | --- |
+| My Listing → Create | Name | Additional Fields: Tagline, Description, Website, Country |
+| My Listing → Update | Listing ID | Update Fields: Tagline, Description, Website, Country |
+| Webhook → Create | URL, Events | Additional Fields: Label, Categories |
+| Webhook → Update | Webhook ID | Update Fields: Label, URL, Events, Categories |
+
+For example, to create a minimal listing:
+
+1. Select **Resource**: `My Listing`, **Operation**: `Create`.
+2. Enter **Name**: `Safiri Fintech`.
+3. Execute — or expand **Additional Fields** to add a tagline, description, website and country.
+
+```json
+{
+  "name": "Safiri Fintech",
+  "tagline": "Payments infrastructure for SMEs",
+  "website": "https://safiri.example",
+  "country": "Kenya"
+}
+```
+
 ## Resources
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
